@@ -1,0 +1,5 @@
+内核中通用数据结果中最有用的几个数据结构：链表(List)、队列(queue)、映射(maps)、二叉树(bintree)
+
+使用链表存放数据的理想情况是，需要遍历所有数据或需要加入和删除数据时。所有的链表操作都定义在linux/list.h头文件中。
+
+Linux内核通用队列实现称为kfifo。它实现在文件kernel/kfifo.c中，声明在linux/kfifo.h中。
