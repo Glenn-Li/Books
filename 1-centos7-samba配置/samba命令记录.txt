@@ -1,0 +1,41 @@
+yum install samba samba-client samba-common -y
+
+systemctl enable smb.service
+systemctl enable nmb.service
+
+systemctl restart smb.service
+systemctl restart nmb.service
+
+firewall-cmd --permanent --zone=public --add-service=samba
+firewall-cmd --reload
+
+mkdir /samba/anonymous
+chmod -R 0755 anonymous/
+chown -R nobody:nobody anonymous/
+chcon -t samba_share_t anonymous/
+
+useradd glenn
+groupadd smbgrp
+usermod -a -G smbgrp glenn
+smbpasswd -a glenn
+
+mkdir /home/share
+cd /home/share
+chown -R glenn:smbgrp share/
+chmod -R 0770 share/
+chcon -t samba_share_t /home/share/
+
+useradd smbt
+usermod -a -G smbgrp smbt
+smbpasswd -a smbt
+
+useradd django
+groupadd djangogrp
+usermod -a -G djangogrp django
+smbpasswd -a django
+
+mkdir /home/django
+cd /home/django
+chown -R django:djangogrp django/
+chmod -R 0770 django/
+chcon -t samba_share_t django/

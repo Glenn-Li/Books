@@ -1,0 +1,56 @@
+其中用到的IDR机制如下：
+
+(1)获得idr
+要在代码中使用idr，首先要包括<linux/idr.h>。接下来，我们要在代码中分配idr结构体，并初始化：
+void idr_init(struct idr *idp);
+或者使用static DEFINE_IDR(mtd_idr);在编译时定义
+其中idr定义如下：
+struct idr {
+	struct idr_layer *top;
+	struct idr_layer *id_free;
+	int layers;	/* only valid without concurrent changes */
+	int id_free_cnt;
+	spinlock_t lock;
+};
+/* idr是idr机制的核心结构体 */
+
+(2)为idr分配内存
+int idr_pre_get(struct idr *idp, unsigned int gfp_mask);
+每次通过idr获得ID号之前，需要先分配内存。
+返回0表示错误，非零值代表正常
+
+(3)分配ID号并将ID号和指针关联
+int idr_get_new(struct idr *idp, void *ptr, int *id);
+int idr_get_new_above(struct idr *idp, void *ptr, int start_id, int *id);
+idp: 之前通过idr_init初始化的idr指针
+id: 由内核自动分配的ID号
+ptr: 和ID号相关联的指针
+start_id: 起始ID号。内核在分配ID号时，会从start_id开始。如果为I2C节点分配ID号，可以将设备地址作为start_id
+函数调用正常返回0，如果没有ID可以分配，则返回-ENOSPC
+在实际中，上述函数常常采用如下方式使用：
+again:
+if (idr_pre_get(&my_idr, GFP_KERNEL) == 0) {
+	/* No memory, give up entirely */
+}
+spin_lock(&my_lock);
+result = idr_get_new(&my_idr, &target, &id);
+if (result == -EAGAIN) {
+	sigh();
+	spin_unlock(&my_lock);
+	goto again;
+}
+
+(4)通过ID号搜索对应的指针
+void *idr_find(struct idr *idp, int id);
+返回值是和给定id相关联的指针，如果没有，则返回NULL
+
+(5)删除ID
+要删除一个ID，使用：
+void idr_remove(struct idr *idp, int id);
+
+
+(6)遍历
+void *idr_get_next(struct idr *idp, int *nextidp)
+返回给定id的下一个id所对应的指针
+
+通过上面这些方法，内核代码可以为子设备，inode生成对应的ID号。这些函数都定义在lib/idr.c中
